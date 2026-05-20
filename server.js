@@ -15,7 +15,10 @@ app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/assignments', require('./routes/assignments'));
 app.use('/api/trips', require('./routes/trips'));
 app.use('/api/maintenance', require('./routes/maintenance'));
-
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://your-frontend-domain.netlify.app'],
+  credentials: true
+}));
 app.get('/api/test', (req, res) => {
   res.send('Fleet Management Backend is running');
 } );
