@@ -18,5 +18,5 @@ app.use('/api/maintenance', require('./routes/maintenance'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚛 Fleet Management Backend running on http://localhost:${PORT}`);
+  console.log(`Fleet Management Backend running on http://localhost:${PORT}`);
 });
