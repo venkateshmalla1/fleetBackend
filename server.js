@@ -13,18 +13,25 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:5000',
-      'https://your-frontend-domain.netlify.app'
-    ];
+      'http://127.0.0.1:3000',
+      'https://your-frontend-domain.netlify.app',
+      'https://fleetmagic-frontend.netlify.app',
+      'https://fleet-frontend.onrender.com',
+      process.env.FRONTEND_URL
+    ].filter(Boolean);
     
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('CORS not allowed'));
+      console.warn(`CORS request from unknown origin: ${origin}`);
+      callback(null, true); // Allow for now, restrict later
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
@@ -36,6 +43,7 @@ app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/assignments', require('./routes/assignments'));
 app.use('/api/trips', require('./routes/trips'));
 app.use('/api/maintenance', require('./routes/maintenance'));
+app.use('/api/users', require('./routes/users'));
 
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Fleet Management Backend is running' });
