@@ -6,23 +6,48 @@ const db = require('./config/db');
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// ✅ CORS FIRST - Before any routes
+const corsOptions = {
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5000',
+      'https://your-frontend-domain.netlify.app'
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
-// Routes
+// ✅ Routes AFTER middleware
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/vehicles', require('./routes/vehicles'));
 app.use('/api/assignments', require('./routes/assignments'));
 app.use('/api/trips', require('./routes/trips'));
 app.use('/api/maintenance', require('./routes/maintenance'));
-app.use(cors({
-  origin: ['http://localhost:3000', 'https://your-frontend-domain.netlify.app'],
-  credentials: true
-}));
+
 app.get('/api/test', (req, res) => {
-  res.send('Fleet Management Backend is running');
-} );
+  res.json({ message: 'Fleet Management Backend is running' });
+});
+
+// ✅ Error handler at the end
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: err.message });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Fleet Management Backend running on http://localhost:${PORT}`);
+  console.log(`Backend running on ${PORT}`);
 });
