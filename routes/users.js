@@ -20,6 +20,54 @@ router.get('/drivers', authenticateToken, (req, res) => {
   });
 });
 
+// Get own profile
+router.get('/profile', authenticateToken, (req, res) => {
+  db.get('SELECT id, name, email, role FROM users WHERE id = ?', [req.user.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'User not found' });
+    res.json(row);
+  });
+});
+
+// Update own profile
+router.put('/profile', authenticateToken, (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name && !email && !password) {
+    return res.status(400).json({ error: 'At least one field is required' });
+  }
+
+  const updates = [];
+  const params = [];
+
+  if (name) {
+    updates.push('name = ?');
+    params.push(name.trim());
+  }
+  if (email) {
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ error: 'Valid email is required' });
+    }
+    updates.push('email = ?');
+    params.push(email.trim().toLowerCase());
+  }
+  if (password) {
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    updates.push('password = ?');
+    params.push(bcrypt.hashSync(password, 10));
+  }
+
+  params.push(req.user.id);
+
+  db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params, function(err) {
+    if (err) return res.status(400).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'Profile updated successfully' });
+  });
+});
+
 // Get user by ID
 router.get('/:id', authenticateToken, (req, res) => {
   db.get('SELECT id, name, email, role FROM users WHERE id = ?', [req.params.id], (err, row) => {
