@@ -99,4 +99,25 @@ router.put('/:id/location', authenticateToken, (req, res) => {
     });
 });
 
+router.get('/:id', authenticateToken, (req, res) => {
+  db.get('SELECT * FROM vehicles WHERE id = ?', [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Vehicle not found' });
+    res.json(row);
+  });
+});
+
+router.delete('/:id', authenticateToken, authorizeRoles('admin', 'fleet_manager'), (req, res) => {
+  db.run('DELETE FROM vehicles WHERE id = ?', [req.params.id], function(err) {
+    if (err) {
+      if (err.message.includes('FOREIGN KEY constraint failed')) {
+        return res.status(400).json({ error: 'Cannot delete vehicle because it is referenced in assignments, trips, or maintenance.' });
+      }
+      return res.status(500).json({ error: err.message });
+    }
+    if (this.changes === 0) return res.status(404).json({ error: 'Vehicle not found' });
+    res.json({ message: 'Vehicle deleted successfully' });
+  });
+});
+
 module.exports = router;

@@ -83,4 +83,60 @@ router.patch('/:id/complete', authenticateToken, authorizeRoles('admin', 'fleet_
   }
 });
 
+router.get('/:id', authenticateToken, (req, res) => {
+  db.get(`SELECT a.*, v.plate_number, v.model, u.name as driver_name, u.role 
+          FROM assignments a 
+          JOIN vehicles v ON a.vehicle_id = v.id 
+          JOIN users u ON a.driver_id = u.id 
+          WHERE a.id = ?`, [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Assignment not found' });
+    res.json(row);
+  });
+});
+
+router.put('/:id', authenticateToken, authorizeRoles('admin', 'fleet_manager'), async (req, res) => {
+  const { vehicle_id, driver_id, status } = req.body;
+  const updates = [];
+  const params = [];
+
+  if (vehicle_id !== undefined) {
+    if (!Number.isInteger(vehicle_id)) return res.status(400).json({ error: 'Vehicle ID must be an integer' });
+    updates.push('vehicle_id = ?');
+    params.push(vehicle_id);
+  }
+  if (driver_id !== undefined) {
+    if (!Number.isInteger(driver_id)) return res.status(400).json({ error: 'Driver ID must be an integer' });
+    updates.push('driver_id = ?');
+    params.push(driver_id);
+  }
+  if (status) {
+    if (!['Active', 'Completed', 'Cancelled'].includes(status)) return res.status(400).json({ error: 'Status must be Active, Completed, or Cancelled' });
+    updates.push('status = ?');
+    params.push(status);
+  }
+
+  if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
+
+  params.push(req.params.id);
+
+  try {
+    const result = await run(`UPDATE assignments SET ${updates.join(', ')} WHERE id = ?`, params);
+    if (result.changes === 0) return res.status(404).json({ error: 'Assignment not found' });
+    res.json({ message: 'Assignment updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/:id', authenticateToken, authorizeRoles('admin', 'fleet_manager'), async (req, res) => {
+  try {
+    const result = await run('DELETE FROM assignments WHERE id = ?', [req.params.id]);
+    if (result.changes === 0) return res.status(404).json({ error: 'Assignment not found' });
+    res.json({ message: 'Assignment deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

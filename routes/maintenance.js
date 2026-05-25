@@ -74,4 +74,53 @@ router.patch('/:id/complete', authenticateToken, authorizeRoles('admin', 'fleet_
   }
 });
 
+router.get('/:id', authenticateToken, (req, res) => {
+  db.get(`SELECT m.*, v.plate_number, v.model
+          FROM maintenance m
+          JOIN vehicles v ON m.vehicle_id = v.id
+          WHERE m.id = ?`, [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Maintenance record not found' });
+    res.json(row);
+  });
+});
+
+router.put('/:id', authenticateToken, authorizeRoles('admin', 'fleet_manager'), async (req, res) => {
+  const { vehicle_id, description, scheduled_date, completed_date, status } = req.body;
+  const updates = [];
+  const params = [];
+
+  if (vehicle_id !== undefined) { updates.push('vehicle_id=?'); params.push(vehicle_id); }
+  if (description !== undefined) { updates.push('description=?'); params.push(description.trim()); }
+  if (scheduled_date !== undefined) { updates.push('scheduled_date=?'); params.push(scheduled_date); }
+  if (completed_date !== undefined) { updates.push('completed_date=?'); params.push(completed_date); }
+  if (status !== undefined) {
+    if (!['Scheduled', 'Completed', 'Cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be Scheduled, Completed, or Cancelled' });
+    }
+    updates.push('status=?'); params.push(status);
+  }
+
+  if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
+  params.push(req.params.id);
+
+  try {
+    const result = await run(`UPDATE maintenance SET ${updates.join(', ')} WHERE id=?`, params);
+    if (result.changes === 0) return res.status(404).json({ error: 'Maintenance record not found' });
+    res.json({ message: 'Maintenance record updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/:id', authenticateToken, authorizeRoles('admin', 'fleet_manager'), async (req, res) => {
+  try {
+    const result = await run('DELETE FROM maintenance WHERE id=?', [req.params.id]);
+    if (result.changes === 0) return res.status(404).json({ error: 'Maintenance record not found' });
+    res.json({ message: 'Maintenance record deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

@@ -85,4 +85,54 @@ router.get('/', authenticateToken, (req, res) => {
   });
 });
 
+router.get('/:id', authenticateToken, (req, res) => {
+  db.get(`SELECT t.*, v.plate_number, u.name as driver_name 
+          FROM trips t 
+          JOIN vehicles v ON t.vehicle_id = v.id 
+          JOIN users u ON t.driver_id = u.id 
+          WHERE t.id = ?`, [req.params.id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row) return res.status(404).json({ error: 'Trip not found' });
+    res.json(row);
+  });
+});
+
+router.put('/:id', authenticateToken, async (req, res) => {
+  const { vehicle_id, driver_id, start_lat, start_lng, end_lat, end_lng, distance, fuel_used, start_time, end_time } = req.body;
+  const updates = [];
+  const params = [];
+  
+  if (vehicle_id !== undefined) { updates.push('vehicle_id=?'); params.push(vehicle_id); }
+  if (driver_id !== undefined) { updates.push('driver_id=?'); params.push(driver_id); }
+  if (start_lat !== undefined) { updates.push('start_lat=?'); params.push(start_lat); }
+  if (start_lng !== undefined) { updates.push('start_lng=?'); params.push(start_lng); }
+  if (end_lat !== undefined) { updates.push('end_lat=?'); params.push(end_lat); }
+  if (end_lng !== undefined) { updates.push('end_lng=?'); params.push(end_lng); }
+  if (distance !== undefined) { updates.push('distance=?'); params.push(distance); }
+  if (fuel_used !== undefined) { updates.push('fuel_used=?'); params.push(fuel_used); }
+  if (start_time !== undefined) { updates.push('start_time=?'); params.push(start_time); }
+  if (end_time !== undefined) { updates.push('end_time=?'); params.push(end_time); }
+
+  if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
+  params.push(req.params.id);
+
+  try {
+    const result = await run(`UPDATE trips SET ${updates.join(', ')} WHERE id=?`, params);
+    if (result.changes === 0) return res.status(404).json({ error: 'Trip not found' });
+    res.json({ message: 'Trip updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const result = await run('DELETE FROM trips WHERE id=?', [req.params.id]);
+    if (result.changes === 0) return res.status(404).json({ error: 'Trip not found' });
+    res.json({ message: 'Trip deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
