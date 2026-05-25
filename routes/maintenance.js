@@ -15,7 +15,7 @@ const run = (sql, params = []) => new Promise((resolve, reject) => {
 
 const isValidDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
 
-router.post('/', authenticateToken, authorizeRoles('admin', 'fleet_manager'), async (req, res) => {
+router.post('/', authenticateToken, authorizeRoles('admin', 'fleet_manager', 'driver'), async (req, res) => {
   const { vehicle_id, description, scheduled_date } = req.body;
 
   if (!Number.isInteger(vehicle_id)) {
