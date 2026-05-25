@@ -14,10 +14,14 @@ const run = (sql, params = []) => new Promise((resolve, reject) => {
 });
 
 router.post('/', authenticateToken, authorizeRoles('admin', 'fleet_manager'), async (req, res) => {
-  const { vehicle_id, driver_id } = req.body;
+  let { vehicle_id, driver_id } = req.body;
 
-  if (!Number.isInteger(vehicle_id) || !Number.isInteger(driver_id)) {
-    return res.status(400).json({ error: 'Vehicle ID and driver ID must be integers' });
+  // Convert to integers in case the frontend sends them as strings
+  vehicle_id = parseInt(vehicle_id, 10);
+  driver_id = parseInt(driver_id, 10);
+
+  if (isNaN(vehicle_id) || isNaN(driver_id)) {
+    return res.status(400).json({ error: 'Vehicle ID and driver ID must be valid integers' });
   }
 
   try {
@@ -96,17 +100,19 @@ router.get('/:id', authenticateToken, (req, res) => {
 });
 
 router.put('/:id', authenticateToken, authorizeRoles('admin', 'fleet_manager'), async (req, res) => {
-  const { vehicle_id, driver_id, status } = req.body;
+  let { vehicle_id, driver_id, status } = req.body;
   const updates = [];
   const params = [];
 
   if (vehicle_id !== undefined) {
-    if (!Number.isInteger(vehicle_id)) return res.status(400).json({ error: 'Vehicle ID must be an integer' });
+    vehicle_id = parseInt(vehicle_id, 10);
+    if (isNaN(vehicle_id)) return res.status(400).json({ error: 'Vehicle ID must be an integer' });
     updates.push('vehicle_id = ?');
     params.push(vehicle_id);
   }
   if (driver_id !== undefined) {
-    if (!Number.isInteger(driver_id)) return res.status(400).json({ error: 'Driver ID must be an integer' });
+    driver_id = parseInt(driver_id, 10);
+    if (isNaN(driver_id)) return res.status(400).json({ error: 'Driver ID must be an integer' });
     updates.push('driver_id = ?');
     params.push(driver_id);
   }
